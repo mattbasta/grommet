@@ -4,6 +4,7 @@ function grom(func, args) {
     // Save the information necessary to call the callback.
     this.func = func;
     this.args = args || [];
+    this.ready = false;
 
     this.callbacks = $.Callbacks("memory unique");
     this.delay_count = 0;
@@ -13,43 +14,46 @@ function grom(func, args) {
     var t = this;
 
     this.go = function() {
-        if(this.delay_count)
+        this.ready = true;
+        this.trigger();
+    };
+    this.trigger = function() {
+        if(!this.ready || this.delay_count)
             return;
         
-        while(this.thens) {
-            var then = this.thens.shift();
+        while(t.thens.length) {
+            var then = t.thens.shift();
             if(typeof then == "function")
-                then.apply(this, []);
+                then.apply(t, []);
             else if(typeof then == "object" && then.is_grommet)
-                then.go();
-            
+                then.trigger();
         }
 
-        this.func.apply(this, this.args);
-        this.callbacks.fire();
+        t.func.apply(t, t.args);
+        t.callbacks.fire();
     };
     this.after = function(g) {
         if(typeof g !== "object" || !g.is_grommet)
             throw new Exception("Cannot chain grommets to functions.");
-        t.delay_count++;
+        this.delay_count++;
         g.callbacks.add(function() {
-            t.delay_count--;
-            t.go();
+            this.delay_count--;
+            t.trigger();
         });
-        return this;
+        return t;
     };
     this.then = function(f) {
-        this.thens.push(f);
-        return this;
+        t.thens.push(f);
+        return t;
     };
     this.delay = function(f) {
-        t.delay_count++;
+        this.delay_count++;
         return function() {
             if(f)
-                var out = f.apply(this, arguments);
+                var out = f.apply(t, arguments);
             
             t.delay_count--;
-            t.go();
+            t.trigger();
             return out;
         };
     };
