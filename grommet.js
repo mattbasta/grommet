@@ -49,8 +49,9 @@ function grom(func, args) {
     this.delay = function(f) {
         this.delay_count++;
         return function() {
+            var out;
             if(f)
-                var out = f.apply(t, arguments);
+                out = f.apply(t, arguments);
             
             t.delay_count--;
             t.trigger();
